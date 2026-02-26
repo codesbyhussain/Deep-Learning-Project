@@ -50,9 +50,9 @@ data/external/*
 !data/processed/reduced/.gitkeep
 !data/processed/labels/.gitkeep
 
-# Models and artifacts (optional: track or ignore)
-models/
-results/
+# Models and artifacts (optional: track or ignore; / = project root only)
+/models/
+/results/
 *.pt
 *.pth
 *.joblib
