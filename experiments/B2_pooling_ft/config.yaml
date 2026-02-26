@@ -1,0 +1,47 @@
+# B2: structured pooling reduction + FT-Transformer classifier
+task_type: multiclass
+class_names:
+  - class_0
+  - class_1
+  - class_2
+  - class_3
+
+multirocket:
+  num_kernels: 2048
+  seed: 0
+  batch_size: 1024
+
+scaling:
+  type: standard
+
+splits:
+  seed: 0
+  test_size: 0.2
+  val_size: 0.1
+
+reduction:
+  type: pooling
+  pooling:
+    n_origins: 2
+    n_stats: 4
+    pool: mean
+
+classifier:
+  type: ft_transformer
+  mlp:
+    hidden_dims: [512, 256]
+    dropout: 0.1
+  ft_transformer:
+    d_token: 128
+    n_heads: 8
+    n_layers: 3
+    dropout: 0.1
+
+train:
+  epochs: 20
+  batch_size: 256
+  lr: 0.001
+  weight_decay: 0.0001
+  device: auto
+  early_stopping: false
+  early_stopping_patience: 5

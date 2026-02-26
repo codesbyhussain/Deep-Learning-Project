@@ -1,0 +1,83 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual envs
+.env
+.venv
+env/
+venv/
+ENV/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# Data (large files)
+data/raw/*
+!data/raw/.gitkeep
+data/interim/*
+!data/interim/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+data/external/*
+!data/external/.gitkeep
+
+# Memmaps and large arrays
+*.dat
+*.npy
+*.npz
+!data/processed/splits/.gitkeep
+!data/processed/multirocket/.gitkeep
+!data/processed/reduced/.gitkeep
+!data/processed/labels/.gitkeep
+
+# Models and artifacts (optional: track or ignore)
+models/
+results/
+*.pt
+*.pth
+*.joblib
+
+# Experiments output
+experiments/*/logs/
+experiments/*/metrics.json
+experiments/*/confusion_matrix.npy
+experiments/*/confusion_matrix.png
+experiments/*/checkpoints/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Reports (collaborative: keep local / shared elsewhere)
+reports/
