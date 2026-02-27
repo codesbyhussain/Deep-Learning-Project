@@ -2,7 +2,7 @@
 
 Reproducible notebook-driven ablation study comparing autoencoder vs structured pooling reduction, and MLP vs FT-Transformer classifiers on MultiROCKET-extracted ECG features.
 
-**Collaborative project** — this repo is set up for 3 people. Use Poetry for a consistent environment; reports are gitignored (share via your preferred channel).
+**Collaborative project** — this repo is set up for 3 people. Use Poetry for a consistent environment; reports are gitignored (share via your preferred channel). Track progress with **[ANALYSIS_ROADMAP.md](ANALYSIS_ROADMAP.md)** (2×2 ablation checklist).
 
 ## Setup (Poetry)
 
