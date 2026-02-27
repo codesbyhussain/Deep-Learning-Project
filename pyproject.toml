@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "multirocket-ecg-ablation"
+name = "penv"
 version = "0.1.0"
 description = "MultiROCKET ECG classification ablation study: autoencoder vs pooling, MLP vs FT-Transformer"
 readme = "README.md"
@@ -7,7 +7,7 @@ authors = []
 packages = [{ include = "src" }]
 
 [tool.poetry.dependencies]
-python = "^3.10"
+python = ">=3.10,<3.13"
 numpy = "^1.24"
 pandas = "^2.0"
 scikit-learn = "^1.3"
@@ -17,10 +17,9 @@ torch = "^2.0"
 tqdm = "^4.65"
 matplotlib = "^3.7"
 jupyter = "^1.0"
-sktime = { version = "^0.25", optional = true }
-
-[tool.poetry.extras]
-sktime = ["sktime"]
+wfdb = "^4.0"
+# sktime: optional MultiROCKET backend; requires Python <3.13
+# Run: poetry add sktime  (use Python 3.12 if on 3.14+)
 
 [build-system]
 requires = ["poetry-core"]
