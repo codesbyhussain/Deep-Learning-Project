@@ -9,6 +9,9 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
+# Project-wide default seed. Use this everywhere (splits, MultiROCKET, training) unless overridden.
+SEED = 0
+
 
 def set_global_seed(seed: int) -> None:
     """Set seeds for Python, NumPy, and PyTorch; enable deterministic behavior where possible."""

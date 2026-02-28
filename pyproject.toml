@@ -20,6 +20,8 @@ jupyter = "^1.0"
 wfdb = "^4.0"
 # sktime: optional MultiROCKET backend; requires Python <3.13
 # Run: poetry add sktime  (use Python 3.12 if on 3.14+)
+sktime = "^0.40.1"
+numba = "^0.64.0"
 
 [build-system]
 requires = ["poetry-core"]

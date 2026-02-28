@@ -16,9 +16,10 @@ from src.utils.paths import (
     get_labels_dir,
     get_models_dir,
 )
-from src.utils.seed import set_global_seed
+from src.utils.seed import SEED, set_global_seed
 
 __all__ = [
+    "SEED",
     "load_config",
     "get_nested",
     "configure_root_logger",

@@ -76,6 +76,16 @@ The script will fail at `load_raw_dataset()` until you implement it. Artifacts (
 
 Notebooks import from `src`; keep core logic in `src/` and use notebooks for exploration and visualization. Use the same Poetry environment for Jupyter (`poetry run jupyter notebook` or select the Poetry venv as the kernel).
 
+### If you see `TypeError: C variable sklearn.utils._random.DEFAULT_SEED has wrong signature`
+
+This can happen on Windows with the scikit-learn version pinned by sktime (e.g. 1.7.x). Fix it by forcing a reinstall of scikit-learn 1.8 in the Poetry env:
+
+```bash
+poetry run pip install --force-reinstall scikit-learn
+```
+
+Then restart the notebook kernel and re-run. (Requires Python 3.11+ for scikit-learn 1.8.)
+
 ## Reports
 
 The `reports/` directory is in `.gitignore`. Share proposal, preliminary, and final reports (e.g. `reports/proposal/`, `reports/preliminary/`, `reports/final/`) via your team’s chosen channel (Drive, OneDrive, etc.).

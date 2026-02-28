@@ -1,6 +1,7 @@
 """MultiROCKET wrapper: use existing package (sktime preferred); fit on train, batch transform, persist."""
 
 import logging
+import time
 from pathlib import Path
 from typing import Any, Optional, Protocol, Union
 
@@ -21,18 +22,16 @@ class MultiRocketAdapter(Protocol):
 
 
 def _create_sktime_multirocket(num_kernels: int = 2048, seed: int = 0) -> Any:
-    """Create MultiRocket transformer from sktime if available. Uses MultiRocketMultivariate (num_kernels rounded to multiple of 84)."""
+    """Create MultiRocketMultivariate transformer from sktime. Requires sktime with MultiRocketMultivariate (no univariate fallback)."""
     try:
         from sktime.transformations.panel.rocket import MultiRocketMultivariate
 
         return MultiRocketMultivariate(num_kernels=num_kernels, random_state=seed)
-    except ImportError:
-        try:
-            from sktime.transformations.panel.rocket import MultiRocket
-
-            return MultiRocket(n_kernels=num_kernels, random_state=seed)
-        except ImportError:
-            return None
+    except ImportError as e:
+        raise ImportError(
+            "MultiROCKET multivariate requires sktime with MultiRocketMultivariate. "
+            "Install with: pip install sktime. Or pass a custom adapter to create_multirocket_transformer(adapter=...)."
+        ) from e
 
 
 def create_multirocket_transformer(
@@ -47,11 +46,6 @@ def create_multirocket_transformer(
     if adapter is not None:
         return adapter
     trans = _create_sktime_multirocket(num_kernels=num_kernels, seed=seed)
-    if trans is None:
-        raise ImportError(
-            "MultiROCKET requires sktime. Install with: pip install sktime. "
-            "Or pass a custom adapter to create_multirocket_transformer(adapter=...)."
-        )
     return trans
 
 
@@ -73,20 +67,32 @@ def transform_multirocket_batched(
     X: np.ndarray,
     batch_size: int = 1024,
 ) -> np.ndarray:
-    """Transform in batches; return (n_samples, n_features) float array."""
+    """Transform in batches; return (n_samples, n_features) float array. Logs progress per batch."""
     if X.ndim == 2:
         X = X[:, np.newaxis, :]
+    # sktime's numba-backed MultiRocketMultivariate expects float64 input (fit uses astype(float64))
+    X = np.asarray(X, dtype=np.float64)
     n = len(X)
+    n_batches = (n + batch_size - 1) // batch_size
     chunks = []
-    for start in range(0, n, batch_size):
+    t0 = time.time()
+    for i, start in enumerate(range(0, n, batch_size)):
         end = min(start + batch_size, n)
         chunk = transformer.transform(X[start:end])
         if hasattr(chunk, "to_numpy"):
             chunk = chunk.to_numpy()
         chunk = np.asarray(chunk, dtype=np.float32)
         chunks.append(chunk)
+        elapsed = time.time() - t0
+        done = i + 1
+        rate = (end / elapsed) if elapsed > 0 else 0
+        eta = (n - end) / rate if rate > 0 else 0
+        logger.info(
+            "Transform batch %d/%d (samples %d/%d) | %.1fs elapsed | ETA %.0fs",
+            done, n_batches, end, n, elapsed, eta,
+        )
     out = np.vstack(chunks)
-    logger.debug("Transformed shape %s -> %s", X.shape, out.shape)
+    logger.info("Transformed shape %s -> %s in %.1fs", X.shape, out.shape, time.time() - t0)
     return out
 
 

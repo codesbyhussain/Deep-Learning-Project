@@ -38,7 +38,7 @@ from src.utils.paths import (
     get_reduced_dir,
     get_splits_dir,
 )
-from src.utils.seed import set_global_seed
+from src.utils.seed import SEED, set_global_seed
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +66,7 @@ def run(
     ckpt_dir = ensure_dir(get_experiment_output_dir(condition, checkpoints=True))
     configure_root_logger(log_file_path=log_dir / "train.log")
 
-    seed = get_nested(cfg, "multirocket.seed", 0)
+    seed = get_nested(cfg, "multirocket.seed", SEED)
     set_global_seed(seed)
     logger.info("Condition: %s | Seed: %s", condition, seed)
     try:
@@ -80,9 +80,9 @@ def run(
     X_raw, y = load_raw_dataset()
     save_labels(y, get_labels_dir() / "labels.npy")
     task_type = get_nested(cfg, "task_type", "multiclass")
-    split_seed = get_nested(cfg, "splits.seed", seed)
+    split_seed = get_nested(cfg, "splits.seed", SEED)
     test_size = get_nested(cfg, "splits.test_size", 0.2)
-    val_size = get_nested(cfg, "splits.val_size", 0.1)
+    val_size = get_nested(cfg, "splits.val_size", 0.2)
     splits_path = get_splits_dir() / "splits.npz"
     if splits_path.exists():
         idx_train, idx_val, idx_test = load_splits(splits_path)

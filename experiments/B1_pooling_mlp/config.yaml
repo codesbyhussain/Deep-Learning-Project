@@ -17,7 +17,7 @@ scaling:
 splits:
   seed: 0
   test_size: 0.2
-  val_size: 0.1
+  val_size: 0.2
 
 reduction:
   type: pooling
