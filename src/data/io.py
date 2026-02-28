@@ -25,11 +25,20 @@ logger = logging.getLogger(__name__)
 
 
 # ---- Target SNOMED codes (4-class subset) ----
+# Order: 3 conditions we detect + Sinus Rhythm (normal / "none")
 TARGET_CODES = [
     "164889003",  # AF
     "427172004",  # GSVT
     "426177001",  # SB
     "426783006",  # SR
+]
+
+# Human-readable names; same order as TARGET_CODES (0=AF, 1=SVT, 2=SB, 3=SR)
+CLASS_NAMES = [
+    "AF",              # Atrial Fibrillation
+    "SVT",             # Supraventricular Tachycardia
+    "Sinus Brady",     # Sinus Bradycardia
+    "Sinus Rhythm",    # normal / none of the above
 ]
 
 
