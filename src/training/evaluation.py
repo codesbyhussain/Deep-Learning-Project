@@ -1,4 +1,4 @@
-"""Evaluation: weighted F1, confusion matrix; save artifacts."""
+"""Evaluation: weighted F1, confusion matrix, per-class metrics; save artifacts."""
 
 import json
 import logging
@@ -8,7 +8,7 @@ from typing import List, Optional, Union
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.metrics import confusion_matrix as sk_confusion_matrix
-from sklearn.metrics import f1_score
+from sklearn.metrics import f1_score, precision_recall_fscore_support
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +29,37 @@ def compute_metrics(
     f1 = f1_score(y_true, y_pred, average="weighted", zero_division=0, labels=labels)
     cm = sk_confusion_matrix(y_true, y_pred, labels=labels)
     return {"weighted_f1": float(f1), "confusion_matrix": cm.tolist()}
+
+
+def compute_per_class_metrics(
+    y_true: np.ndarray,
+    y_pred: np.ndarray,
+    labels: Optional[List[int]] = None,
+    target_names: Optional[List[str]] = None,
+) -> List[dict]:
+    """Return per-class precision, recall, f1, support. labels: class indices; target_names: optional display names."""
+    if y_true.ndim > 1:
+        y_true = np.argmax(y_true, axis=1)
+    if y_pred.ndim > 1:
+        y_pred = np.argmax(y_pred, axis=1)
+    y_true = np.asarray(y_true, dtype=np.int64).ravel()
+    y_pred = np.asarray(y_pred, dtype=np.int64).ravel()
+    if labels is None:
+        labels = sorted(np.unique(np.concatenate([y_true, y_pred])))
+    prec, rec, f1, sup = precision_recall_fscore_support(
+        y_true, y_pred, labels=labels, zero_division=0
+    )
+    names = target_names or [str(i) for i in labels]
+    return [
+        {
+            "class": name,
+            "precision": float(p),
+            "recall": float(r),
+            "f1": float(f),
+            "support": int(s),
+        }
+        for name, p, r, f, s in zip(names, prec, rec, f1, sup)
+    ]
 
 
 def save_metrics(metrics: dict, path: Union[str, Path]) -> Path:
