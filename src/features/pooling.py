@@ -81,3 +81,78 @@ def structured_pool(
     n_origins = n_origins or DEFAULT_N_ORIGINS
     n_stats = n_stats or DEFAULT_N_STATS
     return structured_pooling_fallback(X, n_origins=n_origins, n_stats=n_stats, pool=pool)
+
+
+# ---------------------------------------------------------------------------
+# Dilation-aware (kernel-informed) pooling
+# ---------------------------------------------------------------------------
+
+STAT_NAMES = ["PPV", "LSPV", "MPV", "MIPV"]
+ORIGIN_NAMES = ["raw", "differenced"]
+
+
+def build_dilation_pool_groups(
+    dilations: np.ndarray,
+    num_features_per_dilation: np.ndarray,
+    n_kernels_per_group: int = 84,
+    n_stats: int = DEFAULT_N_STATS,
+    n_origins: int = DEFAULT_N_ORIGINS,
+) -> Tuple[List[np.ndarray], List[dict]]:
+    """Build column-index groups for dilation-aware pooling of MultiROCKET features.
+
+    Each group contains all column indices for one (origin, statistic, dilation) triple.
+    Within that group there are ``n_kernels_per_group * num_features_per_dilation[d]``
+    columns that should be pooled (mean or max) into a single output value.
+
+    MultiROCKET feature layout (for n_base base features, n_stats stats, n_origins origins):
+      - Origin 0 (raw):          columns [0, n_base * n_stats)
+      - Origin 1 (differenced):  columns [n_base * n_stats, 2 * n_base * n_stats)
+      Within each origin block, stat s occupies columns [s * n_base, (s+1) * n_base).
+      Within a stat block, base-feature index b runs 0..n_base-1 ordered by
+      (dilation_index, kernel_index within dilation).
+
+    Returns:
+        group_indices:  list of 1-D int64 arrays (one per output feature)
+        group_meta:     parallel list of dicts describing each group
+    """
+    nfpd = np.asarray(num_features_per_dilation)
+    n_base = int(np.sum(n_kernels_per_group * nfpd))
+
+    # base-feature ranges per dilation
+    dilation_ranges: List[Tuple[int, int]] = []
+    offset = 0
+    for d_nfpd in nfpd:
+        n = n_kernels_per_group * int(d_nfpd)
+        dilation_ranges.append((offset, offset + n))
+        offset += n
+
+    n_per_origin = n_stats * n_base  # e.g. 4 * 2016 = 8064
+
+    group_indices: List[np.ndarray] = []
+    group_meta: List[dict] = []
+
+    for o_idx in range(n_origins):
+        o_off = o_idx * n_per_origin
+        for s_idx in range(n_stats):
+            s_off = s_idx * n_base
+            for d_idx, (d_start, d_end) in enumerate(dilation_ranges):
+                cols = np.arange(o_off + s_off + d_start,
+                                 o_off + s_off + d_end, dtype=np.int64)
+                group_indices.append(cols)
+                group_meta.append({
+                    "dilation": int(dilations[d_idx]),
+                    "dilation_idx": d_idx,
+                    "stat_idx": s_idx,
+                    "stat_name": STAT_NAMES[s_idx] if s_idx < len(STAT_NAMES) else f"stat{s_idx}",
+                    "origin_idx": o_idx,
+                    "origin_name": ORIGIN_NAMES[o_idx] if o_idx < len(ORIGIN_NAMES) else f"origin{o_idx}",
+                    "group_size": int(d_end - d_start),
+                })
+
+    logger.info(
+        "Built %d dilation-aware pool groups from %d dilations × %d stats × %d origins "
+        "(input_dim=%d → output_dim=%d)",
+        len(group_indices), len(dilations), n_stats, n_origins,
+        n_origins * n_per_origin, len(group_indices),
+    )
+    return group_indices, group_meta

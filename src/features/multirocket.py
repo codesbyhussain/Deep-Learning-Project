@@ -111,3 +111,31 @@ def load_multirocket_transformer(path: Union[str, Path]) -> Any:
     if not path.exists():
         raise FileNotFoundError(f"MultiROCKET transformer not found: {path}")
     return joblib.load(path)
+
+
+def extract_kernel_info(transformer: Any) -> dict:
+    """Extract per-kernel metadata from a fitted MultiRocketMultivariate transformer.
+
+    Returns dict with:
+        dilations: 1D int array of dilation values (one per dilation level)
+        num_features_per_dilation: 1D int array (features per kernel at each dilation)
+        n_kernels_per_group: 84 (fixed by MultiRocket's 84 kernel shapes)
+        n_base_features: total base features (sum of 84 * num_features_per_dilation)
+        n_origins: 2 (raw + differenced)
+        n_stats: 4
+        stat_names: ["PPV", "LSPV", "MPV", "MIPV"]
+        origin_names: ["raw", "differenced"]
+    """
+    _, _, dilations, num_features_per_dilation, biases = transformer.parameter
+    dilations = np.asarray(dilations)
+    nfpd = np.asarray(num_features_per_dilation)
+    return {
+        "dilations": dilations,
+        "num_features_per_dilation": nfpd,
+        "n_kernels_per_group": 84,
+        "n_base_features": len(biases),
+        "n_origins": 2,
+        "n_stats": 4,
+        "stat_names": ["PPV", "LSPV", "MPV", "MIPV"],
+        "origin_names": ["raw", "differenced"],
+    }
