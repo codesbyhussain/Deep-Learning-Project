@@ -1,0 +1,199 @@
+\documentclass[10pt,twocolumn,letterpaper]{article}
+\usepackage{balance} % in the preamble
+\usepackage{cvpr}
+\usepackage{times}
+\usepackage{epsfig}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{comment}
+
+% Include other packages here, before hyperref.
+\usepackage[breaklinks=true,bookmarks=false]{hyperref}
+
+\cvprfinalcopy % *** Uncomment this line for the final submission
+
+\def\cvprPaperID{****} % *** Enter the CVPR Paper ID here
+\def\httilde{\mbox{\tt\raisebox{-.5ex}{\symbol{126}}}}
+
+\begin{document}
+
+%%%%%%%%% TITLE
+\title{PROJECT PROPOSAL: Comparing Dimensionality Reduction and Classifier Architectures for MultiROCKET-Based ECG Classification: A Controlled Ablation Study}
+
+\author{Ramita Rathore\\
+Georgia State University\\
+Atlanta, GA, USA \\
+{\tt\small rrathore1@student.gsu.edu}
+\and
+Jacob Cartwright\\
+Georgia State University\\
+Atlanta, GA, USA \\
+{\tt\small jcartwright12@student.gsu.edu}
+\and
+Hussain Manasi\\
+Georgia State University\\
+Atlanta, GA, USA \\
+{\tt\small hmanasi1@student.gsu.edu}
+}
+
+\maketitle
+
+%%%%%%%%% BODY TEXT
+\section{Introduction}
+
+Automated electrocardiogram (ECG) interpretation can assist clinical decision-making by providing rapid, consistent diagnoses, particularly in settings with limited access to specialists. However, multi-label ECG classification remains challenging due to the co-occurrence of multiple cardiac conditions, severe class imbalance between common and rare diagnoses, and the need to capture complex spatiotemporal patterns across twelve leads.
+
+Recent work has shown that MultiROCKET—a random convolutional feature transform—combined with simple linear classifiers achieves competitive performance at a fraction of the computational cost of deep learning \cite{tan2022, wang2023}. However, the raw MultiROCKET feature space is extremely high-dimensional (often exceeding 16,000 features), noisy, and contains many redundant components. How best to reduce this feature space, and which downstream classifier architecture is most effective, remains an open question.
+
+This paper investigates two orthogonal design choices in a controlled $2 \times 2$ ablation: (1) \textbf{dimensionality reduction strategy}—either a nonlinear autoencoder or structured kernel/statistic/origin pooling—and (2) \textbf{classifier architecture}—either a shallow MLP or an FT-Transformer. We evaluate all four combinations on a large 12-lead ECG dataset, focusing on a four-class diagnostic label subset selected to enable direct comparison against prior benchmark results, as reported by \cite{zheng2022}.
+
+The central contributions of this work are: (i) a rigorous comparison of compression strategies for MultiROCKET features; (ii) an empirical evaluation of whether transformer-based tabular models (FT-Transformer) outperform MLPs on dense real-valued feature inputs; and (iii) reproducible benchmarking against published results on a shared label subset.
+
+
+\section{Related Works}
+
+The evolution of automated 12-lead ECG interpretation has shifted from traditional signal processing toward integrated frameworks that combine high-fidelity data repositories, efficient feature extraction, and modular deep learning architectures.
+
+\subsection{Large-Scale 12-Lead ECG Data}
+
+The transition from small, single-lead datasets to massive multivariate repositories has been critical for model generalization. Zheng et al.\ introduced a landmark 12-lead database comprising 45,152 patients sampled at 500 Hz \cite{zheng2022}. Unlike the legacy MIT-BIH database, which is limited by its small patient cohort \cite{frontiers2022}, the Zheng et al.\ repository adheres to AHA/ACC/HRS recommendations, mapping 56 cardiovascular conditions to standardized SNOMED-CT codes \cite{kurias2023}. This granularity allows for robust multi-label classification across diverse demographics \cite{zheng_multilabel}.
+
+\subsection{The ROCKET Family for Feature Extraction}
+
+While conventional deep learning models like CNNs and LSTMs excel at spatial patterns, they are often computationally intensive over long ECG horizons \cite{kth_minirocket, nuyen2024}. Dempster et al.\ proposed ROCKET as a paradigm shift, utilizing random convolutional kernels to achieve state-of-the-art accuracy with minimal training time \cite{dempster2020}. A key innovation is the ``Proportion of Positive Values'' (PPV) feature, which effectively captures chaotic irregularity characteristic of arrhythmias such as atrial fibrillation \cite{arxiv_calf}.
+
+Subsequent iterations have optimized this approach: \textbf{MiniRocket} provides a deterministic transform for millisecond-level inference on edge devices \cite{dempster2021}, while \textbf{MultiRocket} incorporates first-order derivatives and multiple pooling operators to capture nuanced wave morphology and slope dynamics \cite{tan2022, wang2023}.
+
+\subsection{Dimensionality Reduction for High-Dimensional Feature Spaces}
+
+A significant challenge in 12-lead analysis is the ``Curse of Dimensionality,'' as lead-wise ROCKET transforms can produce over 600,000 features \cite{researchgate_block}. Uribarri et al.\ addressed this with \textbf{Detach-ROCKET}, which utilizes Sequential Feature Detachment (SFD) to iteratively prune low-contribution features \cite{uribarri2023}, compressing the feature space by up to 98\% without degrading diagnostic accuracy \cite{upcommons_rocket}.
+
+An alternative reduction strategy is the autoencoder, which performs nonlinear compression of high-dimensional inputs into a compact latent representation. Variations of autoencoders have been applied in ECG contexts to denoise signals \cite{nurmaini_deep_2020, xia_denoising_2023} and learn compact representations prior to downstream classification \cite{c_harvey_ecg_2025, g_wang_unsupervised_2023}. In contrast to feature pruning methods like Detach-ROCKET, the encoder produces a learned dense embedding that may preserve richer nonlinear structure—though at the cost of an additional training stage.
+
+A simpler alternative is \textbf{structured pooling}. In our implementation, we use \textbf{dilation-aware} pooling: the fitted MultiROCKET transformer provides per-kernel metadata (dilation, statistic, origin). Features are grouped by (dilation, statistic, origin); within each group, mean pooling is applied, yielding one value per group (e.g., 22 dilations $\times$ 4 stats $\times$ 2 origins $=$ 176 dimensions). This approach requires no learned parameters and preserves interpretable structure (each dimension is a specific dilation--statistic--origin triple).
+
+\subsection{Transformer Models for Tabular Data}
+
+The FT-Transformer \cite{gorishniy_revisiting_2023} adapts the transformer architecture to tabular (structured, real-valued) data by treating each input feature as a token and applying self-attention across the feature dimension. This allows the model to explicitly capture pairwise feature interactions—for example, ``feature A high AND feature B low implies class X''—which may be clinically relevant in ECG diagnosis where conditions often depend on combinations of morphological and rhythm-based findings. Gorishniy et al.\ demonstrated that FT-Transformer is competitive with or superior to gradient boosting methods on a range of tabular benchmarks, though comparisons with MLPs on purely real-valued (non-categorical) inputs are less conclusive \cite{gorishniy_revisiting_2023}.
+
+\subsection{Benchmarking ECG Classification}
+
+To situate our results within the broader literature, we adopt the four diagnostic label subset used by \cite{zheng2022}, which includes atrial fibrillation, general supraventricular tachycardia, sinus bradycardia and sinus rhythm. Reporting on this shared subset enables direct numerical comparison against confusion matrices and weighted average F-1 scores, providing an external validity check beyond internal ablation results \cite{zheng2022}.
+
+
+\section{Planned Methodology}
+
+\subsection{Dataset and Problem Setting}
+
+We use the expanded Chapman-Shaoxing dataset \cite{zheng2022}. After loading and validation, 45,150 single 10-second ECG recordings remain, each sampled at 500 Hz across 12 leads (5,000 samples per lead); shape $(45{,}150 \times 12 \times 5{,}000)$. Following \cite{zheng2022}, we restrict the target label space to four diagnostic conditions: atrial fibrillation (AF), general supraventricular tachycardia (SVT), sinus bradycardia, and sinus rhythm. Labels are encoded as a single class per recording (multiclass). This focused label subset enables direct benchmarking against published results while controlling label imbalance complexity.
+
+The dataset is partitioned into train/validation/test sets using a 60/20/20 ratio with stratified random sampling (seed 0). Resulting split sizes: 36,120 train, 2,257 validation, 6,773 test. Split indices are generated once and serialized to disk (\texttt{splits.npz}), ensuring identical partitions across all experiments and machines.
+
+\subsection{Core Design: A $2 \times 2$ Ablation}
+
+Our study is structured as a fully crossed $2 \times 2$ ablation over two independent design dimensions:
+
+\begin{itemize}
+    \item \textbf{Dimensionality Reduction:} Autoencoder (Path A) vs.\ Structured Pooling (Path B)
+    \item \textbf{Classifier:} MLP vs.\ FT-Transformer
+\end{itemize}
+
+This yields four experimental conditions, summarized in Table~\ref{tab:conditions}. All four conditions share an identical upstream pipeline: raw 12-lead ECG $\rightarrow$ MultiROCKET feature extraction $\rightarrow$ feature scaling. Downstream performance differences are therefore attributable solely to the reduction strategy and classifier architecture.
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{lcc}
+\hline
+\textbf{Condition} & \textbf{Reduction} & \textbf{Classifier} \\
+\hline
+A1 & Autoencoder & MLP \\
+A2 & Autoencoder & FT-Transformer \\
+B1 & Structured Pooling & MLP \\
+B2 & Structured Pooling & FT-Transformer \\
+\hline
+\end{tabular}
+\caption{The four experimental conditions in the $2 \times 2$ ablation.}
+\label{tab:conditions}
+\end{table}
+
+\subsection{Feature Extraction}
+
+All experiments use a fixed feature representation computed with \emph{multivariate MultiROCKET} (sktime \texttt{MultiRocketMultivariate}), fitted on the training set only. The transformer uses 2,048 random kernels and outputs $2 \times 4 \times 2{,}016 = 16{,}128$ features per recording: 2 signal origins (raw and first-order difference), 4 statistics per origin (PPV, LSPV, MPV, MIPV\footnote{Proportion of Positive Values; Longest Stretch of Positive Values; Max; Mean of Positive Values.}), and 2,016 base feature dimensions determined by the kernel layout (84 kernels per group $\times$ 24 feature multipliers across dilations).
+
+Features are computed in batches of 1,024 and stored as disk-backed \texttt{memmap} arrays in \texttt{float32} (\texttt{train.dat}, \texttt{test.dat}, \texttt{val.dat}) with shapes recorded in \texttt{shapes.npz}. The same fixed features are reused across all four experimental conditions without recomputation.
+
+\subsection{Dimensionality Reduction}
+
+\paragraph{Path A — Autoencoder.}
+Raw MultiROCKET features (16,128 dimensions) are standardized with \texttt{StandardScaler} fit on the training set, then transformed on train/validation/test. A shallow feedforward autoencoder is trained to reconstruct these scaled vectors: input dimension 16,128, encoder hidden dimensions [512, 256] with ReLU, latent dimension $d = 256$. The decoder is symmetric (256 $\to$ 256 $\to$ 512 $\to$ 16,128). Training is unsupervised (MSE reconstruction loss), Adam optimizer (learning rate $10^{-3}$), batch size 256, for 50 epochs. Only the encoder is retained for downstream use; the classifier receives 256-dimensional latent vectors. The autoencoder is trained independently of the downstream classifier.
+
+\paragraph{Path B — Structured Pooling.}
+Kernel metadata from the fitted MultiROCKET transformer (dilations, \texttt{num\_features\_per\_dilation}, 84 kernels per group) is used to build dilation-aware pool groups. Features are grouped by \textbf{dilation} (22 levels), \textbf{statistic} (PPV, LSPV, MPV, MIPV), and \textbf{origin} (raw, differenced). Within each (dilation, statistic, origin) group, \textbf{mean} pooling is applied over the corresponding column indices, yielding one value per group: $22 \times 4 \times 2 = 176$ features. The pipeline is: (1) pre-pool \texttt{StandardScaler} on the 16,128 raw features (fit on train); (2) mean pooling over the 176 groups; (3) post-pool \texttt{StandardScaler} on the 176 pooled features (fit on train). No learned parameters; fully deterministic; each output dimension is a specific (dilation, statistic, origin) triple.
+
+\subsection{Classifier Architectures}
+
+\paragraph{MLP.}
+A multi-layer perceptron: linear $\to$ ReLU $\to$ dropout (0.1) $\to$ linear $\to$ ReLU $\to$ dropout (0.1) $\to$ linear to 4 logits. Hidden dimensions [512, 256]. Output is a four-way probability distribution via softmax; trained with cross-entropy loss. Optimizer: AdamW, learning rate $10^{-3}$, weight decay $10^{-4}$, batch size 256, 20 epochs.
+
+\paragraph{FT-Transformer.}
+The Feature Tokenizer + Transformer architecture \cite{gorishniy_revisiting_2023} treats each of the $n$ reduced features as a token: each scalar is projected by a shared \texttt{Linear(1, d\_token)} (here $d_{\mathrm{token}}=64$), a [CLS] token is prepended, and a transformer encoder (2 layers, 4 heads, GELU, dropout 0.1) is applied. The classification head is a linear layer from the [CLS] representation to 4 logits (four-way multiclass, cross-entropy loss). Optimizer: AdamW, learning rate $2 \times 10^{-3}$, weight decay $10^{-4}$, batch size 1,024, 20 epochs. This architecture can explicitly model feature interactions. The instructor-identified concern, that FT-Transformer may not offer advantages over MLP on purely real-valued inputs, is addressed empirically by conditions A1 vs.\ A2 and B1 vs.\ B2.
+
+\subsection{Evaluation}
+
+All four conditions are evaluated on the same held-out test set under identical label definitions matching \cite{zheng2022}.
+
+\paragraph{Primary metrics:}
+
+Following the evaluation approach used by Zheng et al.\ \cite{zheng2022}, we adopt the following metrics:
+\begin{itemize}
+    \item Confusion and Normalized Confusion Matrices to evaluate models' classification performance
+    \item Weighted Average F1-Score for model comparison and
+    hyperparameter selection.
+\end{itemize}
+
+\paragraph{Ablation analysis:}
+\begin{itemize}
+    \item \textbf{Reduction effect:} Compare (A1+A2) vs.\ (B1+B2) to isolate the contribution of the autoencoder vs.\ structured pooling, averaged across classifiers.
+    \item \textbf{Classifier effect:} Compare (A1+B1) vs.\ (A2+B2) to isolate MLP vs.\ FT-Transformer performance, averaged across reduction strategies.
+    \item \textbf{Interaction effect:} Assess whether one classifier benefits disproportionately from one reduction strategy.
+\end{itemize}
+
+\paragraph{Benchmarking:}
+Results on the four-class label subset are directly compared against the published figures of \cite{zheng2022} to contextualize performance relative to the broader literature.
+
+
+\subsection{Summary}
+
+This methodology holds the upstream feature representation constant and varies exactly two binary factors—reduction strategy and classifier architecture—enabling clean causal attribution of performance differences. Evaluating on a shared four-class label subset ensures external comparability. The $2 \times 2$ design answers three distinct research questions with only four experimental conditions, making it computationally tractable while yielding interpretable conclusions.
+
+
+\section{Preliminary Report Goals}
+
+The preliminary report will establish the complete data pipeline and baseline performance benchmarks. Specifically, we plan on delivering:
+
+\textbf{Complete Sections:} Finalized Introduction and Related Work sections formatted per IEEE CVPR guidelines, including properly cited references.
+
+\textbf{Dataset Preparation:} Preprocessed 12-lead ECG dataset with documented train/val/test splits. Exploratory analysis showing label distributions, class imbalance statistics, and co-occurrence patterns for the four target diagnostic labels as defined by \cite{zheng2022}.
+
+\textbf{Feature Extraction:} Extracted multivariate MultiROCKET features stored as disk-backed arrays for efficient reuse across all four experimental conditions.
+
+\textbf{Baseline Results:} At minimum, conditions B1 (Structured Pooling + MLP) and A1 (Autoencoder + MLP) trained and evaluated, with confusion matrices and weighted average F-1 scores reported on the four-class label subset. We will also compare our results to the results presented in the paper \cite{zheng2022} using regular and normalized confusion matrices to evaluate classification models, and weighted average F1-Score to select hyper parameters. 
+
+
+
+\textbf{Figures \& Tables:} Sample ECG visualizations, class distribution plots for the four target labels, condition comparison tables, and performance breakdowns—all with proper captions and formatting.
+
+The final report will add FT-Transformer conditions (A2, B2), complete the $2 \times 2$ ablation analysis, and provide full benchmarking against prior work.
+
+%-------------------------------------------------------------------------
+% REFERENCES SECTION
+{
+\small
+\raggedright
+\bibliographystyle{ieee_fullname}
+\bibliography{egbib}
+}
+
+\end{document}
