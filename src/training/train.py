@@ -81,7 +81,7 @@ def run(
     save_labels(y, get_labels_dir() / "labels.npy")
     task_type = get_nested(cfg, "task_type", "multiclass")
     split_seed = get_nested(cfg, "splits.seed", SEED)
-    test_size = get_nested(cfg, "splits.test_size", 0.2)
+    test_size = get_nested(cfg, "splits.test_size", 0.4)
     val_size = get_nested(cfg, "splits.val_size", 0.2)
     splits_path = get_splits_dir() / "splits.npz"
     if splits_path.exists():

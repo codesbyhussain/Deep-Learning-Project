@@ -88,7 +88,7 @@ To situate our results within the broader literature, we adopt the four diagnost
 
 We use the expanded Chapman-Shaoxing dataset \cite{zheng2022}. After loading and validation, 45,150 single 10-second ECG recordings remain, each sampled at 500 Hz across 12 leads (5,000 samples per lead); shape $(45{,}150 \times 12 \times 5{,}000)$. Following \cite{zheng2022}, we restrict the target label space to four diagnostic conditions: atrial fibrillation (AF), general supraventricular tachycardia (SVT), sinus bradycardia, and sinus rhythm. Labels are encoded as a single class per recording (multiclass). This focused label subset enables direct benchmarking against published results while controlling label imbalance complexity.
 
-The dataset is partitioned into train/validation/test sets using a 60/20/20 ratio with stratified random sampling (seed 0). Resulting split sizes: 36,120 train, 2,257 validation, 6,773 test. Split indices are generated once and serialized to disk (\texttt{splits.npz}), ensuring identical partitions across all experiments and machines.
+The dataset is partitioned into train/validation/test sets using a 60/20/20 ratio with stratified random sampling (seed 0). Resulting split sizes: approximately 27,090 train, 9,030 validation, 9,030 test. Split indices are generated once and serialized to disk (\texttt{splits.npz}), ensuring identical partitions across all experiments and machines.
 
 \subsection{Core Design: A $2 \times 2$ Ablation}
 

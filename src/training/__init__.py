@@ -4,6 +4,8 @@ from src.training.callbacks import EarlyStopping
 from src.training.evaluation import (
     compute_metrics,
     compute_per_class_metrics,
+    compute_relaxed_accuracy,
+    compute_relaxed_per_class_metrics,
     save_confusion_matrix,
     save_metrics,
 )
@@ -14,6 +16,8 @@ __all__ = [
     "EarlyStopping",
     "compute_metrics",
     "compute_per_class_metrics",
+    "compute_relaxed_accuracy",
+    "compute_relaxed_per_class_metrics",
     "save_metrics",
     "save_confusion_matrix",
 ]

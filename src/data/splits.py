@@ -17,10 +17,11 @@ TaskType = Literal["multiclass", "multilabel"]
 def _stratify_multiclass(y: np.ndarray, test_size: float, val_size: float, seed: int) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Stratified splits for single-label multiclass y (n_samples,). test_size and val_size are fractions of the full dataset."""
     idx = np.arange(len(y))
+    n = len(y)
     idx_train, idx_rest = train_test_split(idx, test_size=test_size, stratify=y, random_state=seed)
     rest_size = len(idx_rest)
-    # val_size is fraction of full data; rest has size (1-test_size)*n, so n_val = rest_size * val_size / (1 - test_size)
-    n_val = max(1, int(rest_size * val_size / (1 - test_size))) if test_size < 1 and rest_size > 0 else 0
+    # val_size = fraction of full dataset for val; n_val = n * val_size, capped by rest
+    n_val = max(1, int(n * val_size)) if rest_size > 0 else 0
     n_val = min(n_val, rest_size - 1)
     if n_val == 0:
         idx_val = np.array([], dtype=np.int64)
@@ -39,11 +40,12 @@ def _stratify_multilabel(y: np.ndarray, test_size: float, val_size: float, seed:
         strat = y[:, j] if y.ndim == 2 else y
         if len(np.unique(strat)) > 1:
             break
-    idx = np.arange(len(y))
+    n = len(y)
+    idx = np.arange(n)
     idx_train, idx_rest = train_test_split(idx, test_size=test_size, stratify=strat, random_state=seed)
     rest_size = len(idx_rest)
-    # val_size is fraction of full data; n_val = rest_size * val_size / (1 - test_size)
-    n_val = max(1, int(rest_size * val_size / (1 - test_size))) if test_size < 1 and rest_size > 1 else 0
+    # val_size = fraction of full dataset for val; n_val = n * val_size, capped by rest
+    n_val = max(1, int(n * val_size)) if rest_size > 1 else 0
     n_val = min(n_val, rest_size - 1)
     if n_val == 0:
         idx_val = np.array([], dtype=np.int64)
@@ -57,13 +59,13 @@ def _stratify_multilabel(y: np.ndarray, test_size: float, val_size: float, seed:
 def create_splits(
     y: np.ndarray,
     task_type: TaskType = "multiclass",
-    test_size: float = 0.2,
-    val_size: float = 0.1,
+    test_size: float = 0.4,
+    val_size: float = 0.2,
     seed: int = 0,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Return (train_indices, val_indices, test_indices) as 1D int arrays.
-    test_size and val_size are fractions of the full dataset (e.g. 0.2, 0.2 for 60/20/20 train/val/test).
+    test_size = fraction for (val+test); val_size = fraction for val. E.g. 0.4, 0.2 -> 60/20/20 train/val/test.
     """
     if task_type == "multiclass":
         return _stratify_multiclass(y, test_size, val_size, seed)

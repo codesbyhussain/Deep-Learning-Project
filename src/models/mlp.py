@@ -24,7 +24,9 @@ class MLPClassifier(nn.Module):
         layers: List[nn.Module] = []
         prev = input_dim
         for h in hidden_dims:
-            layers.extend([nn.Linear(prev, h), nn.ReLU(inplace=True), nn.Dropout(dropout)])
+            layers.append(nn.Linear(prev, h))
+            layers.append(nn.BatchNorm1d(h))
+            layers.extend([nn.ReLU(inplace=True), nn.Dropout(dropout)])
             prev = h
         layers.append(nn.Linear(prev, num_classes))
         self.net = nn.Sequential(*layers)

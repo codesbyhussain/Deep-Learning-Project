@@ -31,6 +31,75 @@ def compute_metrics(
     return {"weighted_f1": float(f1), "confusion_matrix": cm.tolist()}
 
 
+def compute_relaxed_accuracy(
+    y_multilabel: np.ndarray,
+    y_pred: np.ndarray,
+    num_classes: Optional[int] = None,
+) -> float:
+    """
+    For multi-label ground truth: count prediction correct if it matches *any* true positive class.
+    y_multilabel: (n_samples, n_classes) binary; y_pred: (n_samples,) predicted class indices.
+    Returns fraction of samples where pred is in the set of true positive labels.
+    """
+    y_multilabel = np.asarray(y_multilabel)
+    y_pred = np.asarray(y_pred).ravel()
+    if num_classes is None:
+        num_classes = y_multilabel.shape[1]
+    n = len(y_pred)
+    if n == 0:
+        return 0.0
+    correct = np.zeros(n, dtype=bool)
+    for i in range(n):
+        true_classes = np.where(y_multilabel[i, :num_classes] > 0)[0]
+        correct[i] = y_pred[i] in true_classes if len(true_classes) > 0 else False
+    return float(np.mean(correct))
+
+
+def compute_relaxed_per_class_metrics(
+    y_multilabel: np.ndarray,
+    y_pred: np.ndarray,
+    num_classes: Optional[int] = None,
+    target_names: Optional[List[str]] = None,
+) -> tuple:
+    """
+    Per-class precision, recall, F1 under relaxed rule: prediction is "correct for class c"
+    if model predicted c and c is one of the true labels for that sample.
+    Returns (per_class_list, weighted_f1_relaxed).
+    """
+    y_multilabel = np.asarray(y_multilabel)
+    y_pred = np.asarray(y_pred).ravel()
+    if num_classes is None:
+        num_classes = y_multilabel.shape[1]
+    if target_names is None:
+        target_names = [str(c) for c in range(num_classes)]
+    n = len(y_pred)
+    per_class = []
+    for c in range(num_classes):
+        true_c = (y_multilabel[:, c] > 0) if y_multilabel.ndim == 2 else (y_multilabel == c)
+        pred_c = y_pred == c
+        tp = int(np.logical_and(pred_c, true_c).sum())
+        fp = int(np.logical_and(pred_c, ~true_c).sum())
+        fn = int(np.logical_and(true_c, ~pred_c).sum())
+        support = int(true_c.sum())
+        prec = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+        rec = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+        f1 = 2 * prec * rec / (prec + rec) if (prec + rec) > 0 else 0.0
+        per_class.append({
+            "class": target_names[c] if c < len(target_names) else str(c),
+            "precision": float(prec),
+            "recall": float(rec),
+            "f1": float(f1),
+            "support": support,
+        })
+    # Weighted F1 (by support)
+    total_support = sum(p["support"] for p in per_class)
+    if total_support > 0:
+        weighted_f1 = sum(p["f1"] * p["support"] for p in per_class) / total_support
+    else:
+        weighted_f1 = 0.0
+    return per_class, float(weighted_f1)
+
+
 def compute_per_class_metrics(
     y_true: np.ndarray,
     y_pred: np.ndarray,

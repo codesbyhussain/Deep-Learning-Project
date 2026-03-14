@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import logging
 import time
+from collections import Counter
 from pathlib import Path
 from typing import Tuple
 
@@ -24,21 +25,22 @@ from src.utils.paths import get_raw_data_dir, get_processed_data_dir, ensure_dir
 logger = logging.getLogger(__name__)
 
 
-# ---- Target SNOMED codes (4-class subset) ----
-# Order: 3 conditions we detect + Sinus Rhythm (normal / "none")
-TARGET_CODES = [
-    "164889003",  # AF
-    "427172004",  # GSVT
-    "426177001",  # SB
-    "426783006",  # SR
+# ---- 11 rhythms merged into 4 groups (SB, AFIB, GSVT, SR) ----
+# Each group is positive if any of its SNOMED codes appear in the record Dx.
+# SB: sinus bradycardia only. AFIB: AF + AFL. GSVT: SVT, AT, AVNRT, AVRT, wandering atrial pacemaker. SR: sinus rhythm + sinus irregularity.
+CODE_GROUPS = [
+    ["164889003", "164890007"],   # AFIB: Atrial Fibrillation, Atrial Flutter
+    ["426761007", "713422000", "233896004", "233897008", "195101003", "427172004"],  # GSVT: SVT, AT, AVNRT, AVRT, wandering, general SVT
+    ["426177001"],                # SB: Sinus Bradycardia
+    ["426783006", "427393009"],   # SR: Sinus Rhythm, Sinus Irregularity
 ]
 
-# Human-readable names; same order as TARGET_CODES (0=AF, 1=SVT, 2=SB, 3=SR)
+# Human-readable names; same order as CODE_GROUPS (0=AF, 1=SVT, 2=SB, 3=SR)
 CLASS_NAMES = [
-    "AF",              # Atrial Fibrillation
-    "SVT",             # Supraventricular Tachycardia
+    "AF",              # AFIB: atrial fibrillation + atrial flutter
+    "SVT",             # GSVT: supraventricular tachycardia and related
     "Sinus Brady",     # Sinus Bradycardia
-    "Sinus Rhythm",    # normal / none of the above
+    "Sinus Rhythm",    # sinus rhythm + sinus irregularity
 ]
 
 
@@ -58,6 +60,45 @@ def _extract_dx_codes(comments) -> set[str]:
     return set()
 
 
+def _extract_dx_codes_from_hea_text(hea_text: str) -> set[str]:
+    """Parse Dx line from raw .hea file text (no WFDB dependency)."""
+    for line in hea_text.splitlines():
+        if "Dx:" in line:
+            dx = line.split("Dx:")[-1].strip()
+            return {p.strip() for p in dx.split(",") if p.strip()}
+    return set()
+
+
+def get_all_unique_dx_codes(counts: bool = False):
+    """Scan all .hea files and return unique SNOMED Dx codes (and optionally counts).
+    Does not load signal data. Returns set of codes, or if counts=True, (set, Counter)."""
+    wfdb_dir = get_raw_data_dir() / "chapman" / "WFDBRecords"
+    if not wfdb_dir.exists():
+        raise FileNotFoundError(f"WFDBRecords not found: {wfdb_dir}")
+    hea_paths = sorted(wfdb_dir.rglob("*.hea"))
+    all_codes: set[str] = set()
+    code_counter: Counter = Counter()
+    records_with_dx = 0
+    records_without_dx = 0
+    for p in hea_paths:
+        try:
+            text = p.read_text(encoding="utf-8", errors="replace")
+        except Exception:
+            records_without_dx += 1
+            continue
+        codes = _extract_dx_codes_from_hea_text(text)
+        if codes:
+            records_with_dx += 1
+            for c in codes:
+                all_codes.add(c)
+                code_counter[c] += 1
+        else:
+            records_without_dx += 1
+    if counts:
+        return all_codes, code_counter, records_with_dx, records_without_dx
+    return all_codes
+
+
 def _load_one_record(hea_path_str: str):
     hea_path = Path(hea_path_str)
     record_base = str(hea_path.with_suffix(""))
@@ -71,7 +112,7 @@ def _load_one_record(hea_path_str: str):
     signal = signal.T.astype(np.float32, copy=False)
 
     codes = _extract_dx_codes(meta.get("comments", []))
-    y = np.array([1 if c in codes else 0 for c in TARGET_CODES], dtype=np.int8)
+    y = np.array([1 if any(c in codes for c in group) else 0 for group in CODE_GROUPS], dtype=np.int8)
 
     return signal, y
 
